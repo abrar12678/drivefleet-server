@@ -38,6 +38,12 @@ async function run() {
       res.json(car);
     });
 
+    app.post("/add-car", async (req, res) => {
+      const car = req.body;
+      const result = await allcarsCollection.insertOne(car);
+      res.json(result);
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log("MongoDB ping successful!");
   } catch (error) {
