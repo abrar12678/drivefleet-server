@@ -58,6 +58,15 @@ async function run() {
       res.json(result);
     });
 
+    app.get("/bookings", async (req, res) => {
+      const { email } = req.query;
+      const bookings = await bookingsCollection
+        .find({ userEmail: email })
+        .sort({ bookingDate: -1 })
+        .toArray();
+      res.json(bookings);
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log("MongoDB ping successful!");
   } catch (error) {
