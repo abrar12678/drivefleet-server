@@ -26,6 +26,7 @@ async function run() {
 
     const db = client.db("drivefleetdb");
     const allcarsCollection = db.collection("allcars");
+    const bookingsCollection = db.collection("bookings");
 
     app.get("/explore-cars", async (req, res) => {
       const cars = await allcarsCollection.find().toArray();
@@ -41,6 +42,19 @@ async function run() {
     app.post("/add-car", async (req, res) => {
       const car = req.body;
       const result = await allcarsCollection.insertOne(car);
+      res.json(result);
+    });
+
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const result = await bookingsCollection.insertOne(booking);
+
+      // Increment bookingCount on the car
+      await allcarsCollection.updateOne(
+        { _id: new ObjectId(booking.carId) },
+        { $inc: { bookingCount: 1 } },
+      );
+
       res.json(result);
     });
 
