@@ -67,6 +67,36 @@ async function run() {
       res.json(bookings);
     });
 
+    // Get user's added cars
+    app.get("/my-cars", async (req, res) => {
+      const { email } = req.query;
+      const cars = await allcarsCollection
+        .find({ addedByEmail: email })
+        .sort({ _id: -1 })
+        .toArray();
+      res.json(cars);
+    });
+
+    // Update a car
+    app.put("/update-car/:id", async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+      const result = await allcarsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData },
+      );
+      res.json(result);
+    });
+
+    // Delete a car
+    app.delete("/delete-car/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await allcarsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.json(result);
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log("MongoDB ping successful!");
   } catch (error) {
