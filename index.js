@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 
 dotenv.config();
 const app = express();
@@ -19,6 +20,33 @@ const client = new MongoClient(uri, {
   },
 });
 
+// ✅ JWKS from Better Auth — used to verify JWT tokens
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
+
+// ✅ Proper JWT verification middleware (like your mentor)
+const verifyToken = async (req, res, next) => {
+  const authHeader = req?.headers?.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const token = authHeader?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    console.log("Token payload:", payload);
+    req.user = payload; // attach decoded user info to request
+    next();
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return res.status(403).json({ message: "Forbidden" });
+  }
+};
+
 async function run() {
   try {
     await client.connect();
@@ -33,19 +61,21 @@ async function run() {
       res.json(cars);
     });
 
-    app.get("/explore-cars/:id", async (req, res) => {
+    // ✅ Protected route — requires valid JWT
+    app.get("/explore-cars/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const car = await allcarsCollection.findOne({ _id: new ObjectId(id) });
       res.json(car);
     });
 
-    app.post("/add-car", async (req, res) => {
+    app.post("/add-car", verifyToken, async (req, res) => {
       const car = req.body;
       const result = await allcarsCollection.insertOne(car);
       res.json(result);
     });
 
-    app.post("/bookings", async (req, res) => {
+    // ✅ Protected route — requires valid JWT
+    app.post("/bookings", verifyToken, async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollection.insertOne(booking);
 
@@ -58,7 +88,8 @@ async function run() {
       res.json(result);
     });
 
-    app.get("/bookings", async (req, res) => {
+    // ✅ Protected route — requires valid JWT
+    app.get("/bookings", verifyToken, async (req, res) => {
       const { email } = req.query;
       const bookings = await bookingsCollection
         .find({ userEmail: email })
@@ -68,7 +99,7 @@ async function run() {
     });
 
     // Get user's added cars
-    app.get("/my-cars", async (req, res) => {
+    app.get("/my-cars", verifyToken, async (req, res) => {
       const { email } = req.query;
       const cars = await allcarsCollection
         .find({ addedByEmail: email })
@@ -78,7 +109,7 @@ async function run() {
     });
 
     // Update a car
-    app.put("/update-car/:id", async (req, res) => {
+    app.put("/update-car/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
       const result = await allcarsCollection.updateOne(
@@ -89,7 +120,7 @@ async function run() {
     });
 
     // Delete a car
-    app.delete("/delete-car/:id", async (req, res) => {
+    app.delete("/delete-car/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await allcarsCollection.deleteOne({
         _id: new ObjectId(id),
@@ -102,7 +133,6 @@ async function run() {
   } catch (error) {
     console.error("MongoDB connection error:", error);
   }
-  // NO client.close() here — keep connection alive
 }
 
 run();
