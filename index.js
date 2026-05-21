@@ -56,8 +56,23 @@ async function run() {
     const allcarsCollection = db.collection("allcars");
     const bookingsCollection = db.collection("bookings");
 
+    // ✅ Search by car name ($regex) + filter by car type ($in)
     app.get("/explore-cars", async (req, res) => {
-      const cars = await allcarsCollection.find().toArray();
+      const { search, type } = req.query;
+
+      const query = {};
+
+      // Search by car name using $regex (case-insensitive)
+      if (search) {
+        query.carName = { $regex: search, $options: "i" };
+      }
+
+      // Filter by car type using $in
+      if (type) {
+        query.carType = { $in: [type] };
+      }
+
+      const cars = await allcarsCollection.find(query).toArray();
       res.json(cars);
     });
 
@@ -68,18 +83,19 @@ async function run() {
       res.json(car);
     });
 
+    // ✅ Protected route — requires valid JWT
     app.post("/add-car", verifyToken, async (req, res) => {
       const car = req.body;
       const result = await allcarsCollection.insertOne(car);
       res.json(result);
     });
 
-    // ✅ Protected route — requires valid JWT
+    // ✅ Protected route — requires valid JWT + $inc bookingCount
     app.post("/bookings", verifyToken, async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollection.insertOne(booking);
 
-      // Increment bookingCount on the car
+      // ✅ Increment bookingCount using $inc
       await allcarsCollection.updateOne(
         { _id: new ObjectId(booking.carId) },
         { $inc: { bookingCount: 1 } },
@@ -98,7 +114,7 @@ async function run() {
       res.json(bookings);
     });
 
-    // Get user's added cars
+    // ✅ Protected route — requires valid JWT
     app.get("/my-cars", verifyToken, async (req, res) => {
       const { email } = req.query;
       const cars = await allcarsCollection
@@ -108,7 +124,7 @@ async function run() {
       res.json(cars);
     });
 
-    // Update a car
+    // ✅ Protected route — requires valid JWT
     app.put("/update-car/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
@@ -119,7 +135,7 @@ async function run() {
       res.json(result);
     });
 
-    // Delete a car
+    // ✅ Protected route — requires valid JWT
     app.delete("/delete-car/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await allcarsCollection.deleteOne({
