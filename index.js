@@ -5,11 +5,20 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 
 dotenv.config();
+
 const app = express();
-app.use(cors());
+
+// CORS — configured once, with all allowed origins
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "https://drivefleet-ashen.vercel.app"],
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 const uri = process.env.MONGO_URI;
 
 const client = new MongoClient(uri, {
@@ -20,9 +29,9 @@ const client = new MongoClient(uri, {
   },
 });
 
-const JWKS = createRemoteJWKSet(
-  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
-);
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
+
+const JWKS = createRemoteJWKSet(new URL(`${CLIENT_URL}/api/auth/jwks`));
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req?.headers?.authorization;
@@ -144,9 +153,12 @@ app.get("/", (req, res) => {
   res.send("DriveFleet server is running!");
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Only listen when running locally (not on Vercel)
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
-
-
+// Export app for Vercel serverless
+module.exports = app;
