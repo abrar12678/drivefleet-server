@@ -11,7 +11,7 @@ const app = express();
 // CORS — configured once, with all allowed origins
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://drivefleet-ashen.vercel.app"],
+    origin: ["http://localhost:3000", "https://drivefleet-one.vercel.app"],
     credentials: true,
   }),
 );
