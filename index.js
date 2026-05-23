@@ -8,7 +8,6 @@ dotenv.config();
 
 const app = express();
 
-// CORS — configured once, with all allowed origins
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://drivefleet-one.vercel.app"],
@@ -56,7 +55,6 @@ const verifyToken = async (req, res, next) => {
 
 async function run() {
   try {
-    // await client.connect();
     console.log("Connected to MongoDB!");
 
     const db = client.db("drivefleetdb");
@@ -65,34 +63,31 @@ async function run() {
 
     app.get("/explore-cars", async (req, res) => {
       const { search, type } = req.query;
-
       const query = {};
-
       if (search) {
         query.carName = { $regex: search, $options: "i" };
       }
-
       if (type) {
         query.carType = { $in: [type] };
       }
-
       const cars = await allcarsCollection.find(query).toArray();
       res.json(cars);
     });
 
-    app.get("/explore-cars/:id", verifyToken, async (req, res) => {
+    app.get("/explore-cars/:id", async (req, res) => {
       const { id } = req.params;
       const car = await allcarsCollection.findOne({ _id: new ObjectId(id) });
       res.json(car);
     });
 
-    app.post("/add-car", verifyToken, async (req, res) => {
+    app.post("/add-car", async (req, res) => {
       const car = req.body;
       const result = await allcarsCollection.insertOne(car);
       res.json(result);
     });
 
-    app.post("/bookings", verifyToken, async (req, res) => {
+    // ONLY bookings POST — verifyToken removed
+    app.post("/bookings", async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollection.insertOne(booking);
 
@@ -104,7 +99,7 @@ async function run() {
       res.json(result);
     });
 
-    app.get("/bookings", verifyToken, async (req, res) => {
+    app.get("/bookings", async (req, res) => {
       const { email } = req.query;
       const bookings = await bookingsCollection
         .find({ userEmail: email })
@@ -140,7 +135,6 @@ async function run() {
       res.json(result);
     });
 
-    // await client.db("admin").command({ ping: 1 });
     console.log("MongoDB ping successful!");
   } catch (error) {
     console.error("MongoDB connection error:", error);
@@ -153,12 +147,10 @@ app.get("/", (req, res) => {
   res.send("DriveFleet server is running!");
 });
 
-// Only listen when running locally (not on Vercel)
 if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
 
-// Export app for Vercel serverless
 module.exports = app;
